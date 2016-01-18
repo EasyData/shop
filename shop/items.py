@@ -7,6 +7,7 @@ class ShopItem(scrapy.Item):
 
     id = scrapy.Field()
     url = scrapy.Field()
+    brand = scrapy.Field()
     name = scrapy.Field()
     desc = scrapy.Field()
     cate = scrapy.Field()
