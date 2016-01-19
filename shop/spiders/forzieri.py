@@ -2,11 +2,12 @@
 
 import scrapy
 import time
+import urlparse
 
 from scrapy.linkextractors import LinkExtractor
 from scrapy.loader import ItemLoader
 from scrapy.loader.processors import Join, MapCompose, TakeFirst
-from scrapy.http import FormRequest
+from scrapy.http import Request
 from scrapy.spiders import CrawlSpider, Rule
 from w3lib.html import remove_tags
 
@@ -35,11 +36,24 @@ class ForzieriEnSpider(CrawlSpider):
         loader.add_value('url', response.url)
         loader.add_css('brand', '.productTitle>.brand_name>a::text')
         loader.add_css('name', '.productTitle>h1::text')
-        loader.add_css('desc', 'p[itemprop="description"]', TakeFirst(), remove_tags, unicode.strip)
+        loader.add_css('desc', 'p[itemprop="description"]')
         loader.add_css('cate', '#breadcrumbs span[itemprop="title"]::text', Join())
         loader.add_value('site', 'forzieri')
         loader.add_value('lang', self.lang)
         loader.add_value('time', time.time())
+
+        url = urlparse.urljoin(
+            self.start_urls[0],
+            response.css('#scheda_tecnica_tab_trigger::attr(href)').extract_first(),
+        )
+        return Request(url, meta={'loader': loader}, callback=self.parse_item_ajax)
+
+    def parse_item_ajax(self, response):
+
+        loader = response.meta.get('loader')
+        desc = loader.get_output_value('desc')
+        desc += response.css('table').extract()
+        loader.replace_value('desc', desc, MapCompose(remove_tags, unicode.strip), Join())
         return loader.load_item()
 
 
